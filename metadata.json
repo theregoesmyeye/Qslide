@@ -1,0 +1,6 @@
+{
+  "name": "Q-Slide Browser",
+  "description": "A floating translucent web and file browser inspired by LG's classic Q-Slide framework. Supports multi-window overlay layouts, system-wide gesture controls, edge docking, and click-through transparency.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
