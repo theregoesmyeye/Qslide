@@ -275,7 +275,17 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
         viewsMap[id] = wrapper
         activeWindowsState.add(state)
 
-        windowManager.addView(composeView, params)
+        try {
+            windowManager.addView(composeView, params)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Failed to display floating window: ${e.message}", Toast.LENGTH_LONG).show()
+            activeWindowsState.remove(state)
+            viewsMap.remove(id)
+            if (activeWindowsState.isEmpty()) {
+                stopSelf()
+            }
+        }
     }
 
     private fun handleDragRelease(state: WindowState) {
@@ -355,29 +365,44 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
         }
     }
 
-    private fun removeFloatingWindow(id: String) {
-        val wrapper = viewsMap.remove(id)
+    private fun removeFloatingWindow(winId: String, stopServiceIfEmpty: Boolean = true) {
+        val wrapper = viewsMap.remove(winId)
         if (wrapper != null) {
             try {
                 windowManager.removeView(wrapper.view)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-            activeWindowsState.removeAll { it.id == id }
+            activeWindowsState.removeAll { it.id == winId }
             
-            // Cleanup web view resources
-            wrapper.state.webViewInstance?.destroy()
+            // Safe cleanup of web view resources
+            try {
+                wrapper.state.webViewInstance?.let { webView ->
+                    (webView.parent as? android.view.ViewGroup)?.removeView(webView)
+                    webView.destroy()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
-        if (activeWindowsState.isEmpty()) {
-            stopSelf()
+        if (stopServiceIfEmpty && activeWindowsState.isEmpty()) {
+            try {
+                stopSelf()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
     private fun closeAllAndStop() {
         viewsMap.keys.toList().forEach { id ->
-            removeFloatingWindow(id)
+            removeFloatingWindow(id, stopServiceIfEmpty = false)
         }
-        stopSelf()
+        try {
+            stopSelf()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun seedStarterFiles(dir: File) {
@@ -432,15 +457,19 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
     }
 
     private fun buildNotification(): Notification {
-        val unlockIntent = PendingIntent.getService(
-            this, 1, Intent(this, FloatingWindowService::class.java).apply { action = ACTION_RESTORE_TOUCH },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val actionIntent1 = Intent(this, FloatingWindowService::class.java).apply { action = ACTION_RESTORE_TOUCH }
+        val unlockIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            PendingIntent.getForegroundService(this, 1, actionIntent1, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        } else {
+            PendingIntent.getService(this, 1, actionIntent1, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        }
         
-        val closeAllIntent = PendingIntent.getService(
-            this, 2, Intent(this, FloatingWindowService::class.java).apply { action = ACTION_CLOSE_ALL },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val actionIntent2 = Intent(this, FloatingWindowService::class.java).apply { action = ACTION_CLOSE_ALL }
+        val closeAllIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            PendingIntent.getForegroundService(this, 2, actionIntent2, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        } else {
+            PendingIntent.getService(this, 2, actionIntent2, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        }
 
         val mainActivityIntent = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java),
@@ -464,6 +493,9 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
     }
 
     override fun onDestroy() {
+        viewsMap.keys.toList().forEach { id ->
+            removeFloatingWindow(id, stopServiceIfEmpty = false)
+        }
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         super.onDestroy()
     }
@@ -1384,8 +1416,17 @@ fun QSlideFileFrame(
                         putExtra(FloatingWindowService.EXTRA_WINDOW_TYPE, WindowType.WEB.name)
                         putExtra(FloatingWindowService.EXTRA_INITIAL_URL, "file://" + file.absolutePath)
                     }
-                    context.startService(intent)
-                    Toast.makeText(context, "Rendering loaded in QSlide WebView", Toast.LENGTH_SHORT).show()
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            context.startForegroundService(intent)
+                        } else {
+                            context.startService(intent)
+                        }
+                        Toast.makeText(context, "Rendering loaded in QSlide WebView", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        Toast.makeText(context, "Failed to launch companion window: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
                 },
                 onDelete = {
                     try {

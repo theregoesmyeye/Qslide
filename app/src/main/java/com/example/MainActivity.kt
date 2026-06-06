@@ -308,7 +308,16 @@ fun QSlideDashboard(
                                         putExtra(FloatingWindowService.EXTRA_WINDOW_TYPE, WindowType.WEB.name)
                                         putExtra(FloatingWindowService.EXTRA_INITIAL_URL, webUrlInput)
                                     }
-                                    context.startService(intent)
+                                    try {
+                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                            context.startForegroundService(intent)
+                                        } else {
+                                            context.startService(intent)
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        Toast.makeText(context, "Error starting Web Browser overlay: ${e.message}", Toast.LENGTH_LONG).show()
+                                    }
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -361,7 +370,16 @@ fun QSlideDashboard(
                                         action = FloatingWindowService.ACTION_CREATE_WINDOW
                                         putExtra(FloatingWindowService.EXTRA_WINDOW_TYPE, WindowType.FILE.name)
                                     }
-                                    context.startService(intent)
+                                    try {
+                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                            context.startForegroundService(intent)
+                                        } else {
+                                            context.startService(intent)
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        Toast.makeText(context, "Error starting File Manager overlay: ${e.message}", Toast.LENGTH_LONG).show()
+                                    }
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -404,7 +422,16 @@ fun QSlideDashboard(
                                     val intent = Intent(context, FloatingWindowService::class.java).apply {
                                         action = FloatingWindowService.ACTION_RESTORE_TOUCH
                                     }
-                                    context.startService(intent)
+                                    try {
+                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                            context.startForegroundService(intent)
+                                        } else {
+                                            context.startService(intent)
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        Toast.makeText(context, "Error unlocking touch: ${e.message}", Toast.LENGTH_LONG).show()
+                                    }
                                 },
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(8.dp)
@@ -419,7 +446,16 @@ fun QSlideDashboard(
                                     val intent = Intent(context, FloatingWindowService::class.java).apply {
                                         action = FloatingWindowService.ACTION_CLOSE_ALL
                                     }
-                                    context.startService(intent)
+                                    try {
+                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                            context.startForegroundService(intent)
+                                        } else {
+                                            context.startService(intent)
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        Toast.makeText(context, "Error sending close all command: ${e.message}", Toast.LENGTH_LONG).show()
+                                    }
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                                 modifier = Modifier.weight(1f),
@@ -507,7 +543,16 @@ fun QSlideDashboard(
                                                     action = FloatingWindowService.ACTION_CLOSE_WINDOW
                                                     putExtra(FloatingWindowService.EXTRA_WINDOW_ID, win.id)
                                                 }
-                                                context.startService(intent)
+                                                try {
+                                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                                        context.startForegroundService(intent)
+                                                    } else {
+                                                        context.startService(intent)
+                                                    }
+                                                } catch (e: Exception) {
+                                                    e.printStackTrace()
+                                                    Toast.makeText(context, "Error closing overlay: ${e.message}", Toast.LENGTH_LONG).show()
+                                                }
                                             },
                                             modifier = Modifier.size(28.dp)
                                         ) {
